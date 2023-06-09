@@ -1,0 +1,46 @@
+const mongoose=require('mongoose')
+const userSchema=new mongoose.Schema({
+name:{
+    type:String,
+    required:true
+},
+email:{
+    type:String,
+    required:true,
+    unique:true
+
+},
+passwordHash:{
+    type:String,
+    required:true
+},
+street:{
+    type:String,
+    default:''
+},
+apartment:{
+    type:String,
+    default:''
+},
+city:{
+    type:String,
+    default:''
+},
+zip:{
+    type:String,
+    default:''
+},
+country:{
+    type:String,
+    default:''
+},
+phone:{
+    type:String,
+    required:true
+}, 
+isAdmin:{
+    type:Boolean,
+    default:false
+}
+})
+module.exports=mongoose.model('User',userSchema)
