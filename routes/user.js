@@ -15,7 +15,7 @@ router.get('/',(req,res)=>{
     })
 })
 router.get('/:id',(req,res)=>{
-    User.findById(req.params.id).select('-passwordHash').then(user=>{
+    User.findById(req.params.id).populate('favourites').select('-passwordHash').then(user=>{
         res.status(200).json(user)
     }).catch(err=>{
         res.status(500).json({
@@ -77,6 +77,45 @@ router.post('/login',(req,res)=>{
             error:err
         })
     })
+})
+router.post('/showfav',(req,res)=>{
+    //console.log(req.headers)
+    const bearerheader=req.headers['authorization']
+    if(typeof bearerheader!=='undefined'){
+        const bearer=bearerheader.split(" ")
+        const token=bearer[1]
+        req.token=token
+    }
+    let decodedtoken;
+    try{
+        decodedtoken=jwt.verify(req.token, process.env.secret);
+    }catch (err) {
+        err.statusCode = 500;
+        throw err;
+      }
+      if (!decodedtoken) {
+        const error = new Error('Not authenticated.');
+        error.statusCode = 401;
+        throw error;
+      }
+      req.userId=decodedtoken.userId;
+    const userId=req.userId
+    
+    User.findById(userId)
+          .populate('favourites')
+          .exec()
+          .then(user => {
+            if(!user)
+            {
+              return res.status(400).json({Error:'User not found'}); 
+            }
+            //const prod = user.favourites;
+            res.status(200).json(user.favourites);
+          })
+        .catch(err=>{
+          // console.log("error in displaying favourites", err);
+          res.status(400).json({Error: 'Error in displaying favourites'});
+        })
 })
 
 module.exports=router

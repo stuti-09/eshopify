@@ -5,6 +5,9 @@ const product = require('../models/product')
 const Product=require('../models/product')
 const mongoose=require('mongoose')
 const multer=require('multer')
+const User = require('../models/user')
+const jwt=require('jsonwebtoken')
+const { token } = require('morgan')
 
 const FILE_TYPE_MAP={
     'image/png':'png',
@@ -74,11 +77,17 @@ router.post('/',uploadOptions.single('image'),(req,res)=>{
 //this will send name image and will exclude id
 router.get('/',(req,res)=>{
     //localhost:3000/api/v1/products?categories=21,22
-    let filter={};
+    const filter={};
     if(req.query.categories){
-        filter={category:req.query.categories.split(',')}
+        filter.category=req.query.categories.split(',')
     }
-    Product.find(filter).populate('category').select('name image -_id').then(products=>{
+    if(req.query.brand){
+        filter.brand=req.query.brand
+    }
+    if(req.query.price){
+        filter.price={$lte:req.query.price}
+    }
+    Product.find(filter).populate('category').select('name image price brand -_id').then(products=>{
         res.status(200).json(products)
     }).catch(err=>{
         res.status(500).json({
@@ -171,6 +180,7 @@ router.delete('/:id',(req,res)=>{
        }) 
     })
 })
+//count of product
 router.get('/get/count',(req,res)=>{
     Product.countDocuments({}).then(productcount=>{
         if(!productcount){
@@ -189,6 +199,21 @@ router.get('/get/count',(req,res)=>{
      })
    
    
+})
+//search product
+router.get('/get/search',(req,res)=>{
+    const text=req.body.text
+    Product.find({name:{$regex:text,$options:"xi"}}).then(product=>{
+        if(!product){
+            res.status(404).json({message:"product not found"})
+        }
+        res.status(200).json({product:product})
+    }).catch(err=>{
+        res.status(400).json({
+            error:err,
+            success:false
+           }) 
+    })
 })
 //get products which are featured
 router.get('/get/featured',(req,res)=>{
@@ -259,5 +284,87 @@ router.put(
         res.send(product);
     }
 )
+//addtofav
+router.post('/fav/:id',(req,res)=>{
+    
+    if (req.headers && req.headers.authorization) {
+        var authorization = req.headers.authorization.split(' ')[1],
+            decoded;
+        try {
+            decoded = jwt.verify(authorization, process.env.secret);
+        } catch (e) {
+            return res.status(401).send('unauthorized');
+        }
+        var userId = decoded.userId;
+    }
+   
+    const prodid=req.params.id
+    
+
+    Product.findById(prodid).then(product=>{
+        if(!product){
+            return res.status(400).json({message:'Product does not exist'})
+        }
+        User.findById(userId).then(user=>{
+            if(!user){
+                return res.status(400).json({message:'User does not exist'})
+            }
+            const index = user.favourites.findIndex(prooductid => prooductid==prodid)
+        if(index==-1)
+        {
+          user.favourites.push(prodid);
+          user.save();
+        }
+        else{
+          return res.status(400).json({Error:'Already in favourites'});
+        }
+         return res.status(200).json({message:'Added to favourites'});
+        })
+
+    }).catch(err=>{
+        res.status(400).json({
+         error:err,
+         success:false
+        }) 
+     })
+
+})
+//remove from fav
+router.post('/removefav/:prodid',(req,res)=>{
+    console.log(req.headers)
+    if (req.headers && req.headers.authorization) {
+        var authorization = req.headers.authorization.split(' ')[1],
+            decoded;
+        try {
+            decoded = jwt.verify(authorization, process.env.secret);
+        } catch (e) {
+            return res.status(401).send('unauthorized');
+        }
+        var userId = decoded.userId;
+    }
+   
+    const prodid=req.params.prodid
+    User.findById(userId)
+        .then(user=>{
+          if(!user)
+          {
+             return res.status(400).json('User does not exist'); 
+          }
+          const index = user.favourites.findIndex(prodId => prodId==prodid)
+          if(index==-1)
+          {
+           return res.status(400).json({Error:'Not in favourites'});
+          }
+          user.favourites.splice(index,1);
+          user.save(); 
+          return res.status(200).json({Error:'Removed from favourites'});
+        })
+        .catch(err=>{
+          // console.log("error in removing from favourites", err);
+          res.status(400).json({Error: 'Error in removing from favourites'});
+        })
+})
+
+
 
 module.exports=router

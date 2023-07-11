@@ -38,6 +38,10 @@ phone:{
     type:String,
     required:true
 }, 
+favourites:[{
+    type:mongoose.Schema.Types.ObjectId,
+    ref:'product'
+  }],
 isAdmin:{
     type:Boolean,
     default:false

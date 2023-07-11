@@ -1,7 +1,7 @@
 const  expressjwt=require('express-jwt')
-
-function authJwt(){
-    const secret=process.env.secret;
+const jwt=require('jsonwebtoken')
+function authJwt(req,res){
+    const secret=process.env.secret; 
     return expressjwt({
         secret,
         algorithms:['HS256'],
